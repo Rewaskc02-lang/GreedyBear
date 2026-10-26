@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from collections.abc import Mapping
+from datetime import timedelta
 
 from django.conf import settings
 from django.core import signing
@@ -25,6 +26,9 @@ FEED_DEFAULTS = {
     "verbose": False,
     "paginate": False,
 }
+
+# Largest max_age (days) that filter_max_age can subtract from timezone.now() without OverflowError.
+MAX_FEED_MAX_AGE_DAYS = 36500
 
 PRIORITIZATION_PRESETS = {
     "recent": {"max_age": 3, "min_days_seen": 1, "ordering": "-last_seen"},
@@ -160,6 +164,7 @@ class AdvancedFeedRequestSerializer(BaseFeedRequestSerializer):
 
     max_age = serializers.IntegerField(
         min_value=1,
+        max_value=MAX_FEED_MAX_AGE_DAYS,
         default=FEED_DEFAULTS["max_age"],
         help_text="Maximum age in days since an IOC was last seen. Ignored when `start_date` or `end_date` is given.",
     )
@@ -184,6 +189,14 @@ class AdvancedFeedRequestSerializer(BaseFeedRequestSerializer):
     tag_key = serializers.CharField(max_length=128, required=False, allow_blank=True, help_text="Filter by tag key (case-insensitive exact match).")
     tag_value = serializers.CharField(max_length=256, required=False, allow_blank=True, help_text="Filter by tag value.")
     country_code = serializers.CharField(max_length=2, required=False, allow_blank=True, help_text="Filter by 2-letter attacker country code.")
+
+    def validate_end_date(self, value):
+        if value is not None:
+            try:
+                value + timedelta(days=1)
+            except OverflowError:
+                raise serializers.ValidationError("end_date is too large for the feed date filter.") from None
+        return value
 
     def validate(self, attrs: dict) -> dict:
         logger.debug("Validating advanced feed request")

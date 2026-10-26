@@ -78,6 +78,14 @@ class FeedsASNViewTestCase(CustomTestCase):
         self.assertIsInstance(payload, list)
         return payload
 
+    def test_end_date_beyond_representable_limit_returns_400(self):
+        response = self.client.get(f"{self.url}?end_date=9999-12-31")
+        self.assertEqual(response.status_code, 400)
+
+    def test_max_age_beyond_limit_returns_400(self):
+        response = self.client.get(f"{self.url}?max_age=740000")
+        self.assertEqual(response.status_code, 400)
+
     def test_200_asn_feed_aggregated_fields(self):
         """Ensure aggregated fields are computed correctly per ASN using dynamic sums"""
         response = self.client.get(self.url)

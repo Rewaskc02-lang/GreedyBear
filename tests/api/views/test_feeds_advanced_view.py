@@ -156,6 +156,26 @@ class FeedsAdvancedViewTestCase(CustomTestCase):
         response = self.client.get("/api/feeds/advanced/?start_date=2026-01-20&end_date=2026-01-10")
         self.assertEqual(response.status_code, 400)
 
+    def test_end_date_at_representable_limit_returns_200(self):
+        response = self.client.get("/api/feeds/advanced/?end_date=9999-12-30")
+        self.assertEqual(response.status_code, 200)
+
+    def test_end_date_beyond_representable_limit_returns_400(self):
+        response = self.client.get("/api/feeds/advanced/?end_date=9999-12-31")
+        self.assertEqual(response.status_code, 400)
+
+    def test_max_age_beyond_limit_returns_400(self):
+        response = self.client.get("/api/feeds/advanced/?max_age=740000")
+        self.assertEqual(response.status_code, 400)
+
+    def test_max_age_at_limit_returns_200(self):
+        response = self.client.get("/api/feeds/advanced/?max_age=36500")
+        self.assertEqual(response.status_code, 200)
+
+    def test_share_rejects_overflowing_end_date(self):
+        response = self.client.post("/api/feeds/share?end_date=9999-12-31&reason=test")
+        self.assertEqual(response.status_code, 400)
+
     def test_feeds_advanced_includes_sensors(self):
         """Sensors field appears in feeds_advanced response for authenticated users."""
         sensor = Sensor.objects.create(address="10.0.0.1", label="test-sensor")
